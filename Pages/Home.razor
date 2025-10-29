@@ -1,0 +1,70 @@
+﻿@page "/"
+@inject HttpClient Http
+@using System.Text.Json
+
+<h3>Buscar Pokémon</h3>
+
+<div class="mb-3">
+    <label for="pokemonName" class="form-label">Nome do Pokémon:</label>
+    <input @bind="pokemonName" id="pokemonName" class="form-control" placeholder="Ex: pikachu" />
+</div>
+
+<button class="btn btn-primary" @onclick="BuscarPokemon">Buscar Pokémon</button>
+
+@if (pokemon != null)
+{
+    <div class="mt-4">
+        <h4>Detalhes do Pokémon</h4>
+        <img src="@pokemon.ImageUrl" alt="@pokemon.Name" width="200" />
+        <p><b>ID:</b> @pokemon.Id</p>
+        <p><b>Nome:</b> @pokemon.Name</p>
+        <p><b>Altura:</b> @String.Format("{0:0.0}", pokemon.Height / 10) m</p>
+        <p><b>Peso:</b> @String.Format("{0:0.0}", pokemon.Weight / 10) kg</p>
+    </div>
+}
+
+@if (erro != null)
+{
+    <div class="alert alert-danger mt-3">@erro</div>
+}
+
+@code {
+    private string pokemonName = "";
+    private Pokemon? pokemon;
+    private string? erro;
+
+    private async Task BuscarPokemon()
+    {
+        erro = null;
+        pokemon = null;
+
+        if (string.IsNullOrWhiteSpace(pokemonName))
+        {
+            erro = "Digite o nome de um Pokémon!";
+            return;
+        }
+
+        try
+        {
+            var url = $"https://pokeapi.co/api/v2/pokemon/{pokemonName.ToLower()}";
+            var resposta = await Http.GetFromJsonAsync<JsonElement>(url);
+
+            pokemon = new BlazorPokeApi.Models.Pokemon
+            {
+                Id = resposta.GetProperty("id").GetInt32(),
+                Name = resposta.GetProperty("name").GetString()!,
+                Height = resposta.GetProperty("height").GetDouble(),
+                Weight = resposta.GetProperty("weight").GetDouble(),
+                ImageUrl = resposta.GetProperty("sprites")
+                    .GetProperty("other")
+                    .GetProperty("official-artwork")
+                    .GetProperty("front_default")
+                    .GetString()!
+            };
+        }
+        catch (Exception)
+        {
+            erro = "Pokémon não encontrado! Verifique o nome e tente novamente.";
+        }
+    }
+}
